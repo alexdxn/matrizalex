@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Gestion Tiempo - Side by Side</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0b0f19;
+            background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b0f19 75%);
+            font-family: 'Inter', sans-serif;
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* HEADER & FECHAS */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-title-container {
+            display: flex;
+            align-items: baseline;
+            gap: 95px;
+        }
+
+        .day-name {
+            font-size: 35px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            border-bottom: 3px solid #38bdf8;
+            padding-bottom: 2px;
+        }
+
+        .full-date {
+            font-size: 30px;
+            font-weight: 600;
+            color: #cbd5e1;
+            font-style: italic;
+        }
+
+        .clock-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .live-clock {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 50px;
+            font-weight: 700;
+            color: #4ade80;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.15);
+        }
+
+        .btn-reset {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .btn-reset:hover {
+            background-color: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        /* MATRIZ DE TABLA / TIMELINE */
+        .table-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 13px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #0f172a;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #334155;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 24px;
+        }
+
+        th.col-hora { width: 90px; text-align: center; color: #94a3b8; }
+        th.col-hacer { color: #f97316; border-top: 4px solid #f97316; }
+        th.col-decidir { color: #cbd5e1; border-top: 4px solid #cbd5e1; }
+        th.col-delegar { color: #eab308; border-top: 4px solid #eab308; }
+        th.col-eliminar { color: #3b82f6; border-top: 4px solid #3b82f6; }
+
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+            height: 60px;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        td.cell-hora {
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-weight: 700;
+            font-size: 25px;
+            color: #94a3b8;
+            vertical-align: middle;
+            background: rgba(0, 0, 0, 0.2);
+            user-select: none;
+        }
+
+        /* RESALTADO DE HORA ACTUAL EN VERDE */
+        tr.active-live-hour td {
+            background-color: rgba(34, 197, 94, 0.08) !important;
+        }
+
+        tr.active-live-hour td.cell-hora {
+            background-color: #15803d !important;
+            color: #ffffff !important;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            border-left: 5px solid #22c55e;
+        }
+
+        /* ESTRUCTURA DE TARJETA DE TAREA */
+        .task-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 2px 3px;
+            height: 100%;
+            gap: 12px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .task-left-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+            overflow: hidden;
+            gap: 4px;
+        }
+
+        .task-title {
+            font-weight: 700;
+            font-size: 23px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #f8fafc;
+        }
+
+        /* BARRA DE PROGRESO DE CARGA (IMAGEN 03) */
+        .progress-bar-container {
+            width: 100%;
+            height: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #22c55e; /* Verde brillante */
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+            width: 0%;
+            transition: width 0.3s linear;
+        }
+
+        /* DERECHA DE LA TARJETA: TIMER + BOTÓN */
+        .task-right-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        /* TIMER DIGITAL ESTILO CALCULADORA */
+        .task-timer-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: #cbd5e1;
+            letter-spacing: 1px;
+            user-select: none;
+        }
+
+        /* ESTADO DE BOTONES */
+        .btn-status {
+            border: none;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            outline: none;
+            min-width: 75px;
+            text-align: center;
+        }
+
+        .status-comenzar { background-color: #3b82f6; color: #ffffff; }
+        .status-comenzar:hover { background-color: #2563eb; }
+
+        .status-elegir { background-color: #475569; color: #cbd5e1; }
+        .status-elegir:hover { background-color: #64748b; color: white; }
+
+        .status-ejecutando {
+            background-color: #f97316;
+            color: #ffffff;
+            animation: pulse-orange 1.5s infinite;
+        }
+
+        /* TAREA EN EJECUCIÓN */
+        .task-card.executing {
+            border: 1px solid #f97316;
+            background: rgba(249, 115, 22, 0.12);
+        }
+
+        .task-card.executing .task-timer-display {
+            font-size: 64px;
+            color: #facc15; /* Amarillo estilo calculadora */
+            text-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+            font-weight: 800;
+        }
+
+        /* TAREA COMPLETADA / HECHO (BORDE VERDE Y SIN BARRA) */
+        .status-hecho { background-color: #22c55e; color: #ffffff; }
+        .task-card.completed {
+            border: 1.5px solid #22c55e !important; /* Borde verde para la tarea terminada */
+            background: rgba(34, 197, 94, 0.1);
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+        }
+        .task-card.completed .task-title {
+            color: #ffffff;
+        }
+        .task-card.completed .task-timer-display {
+            color: #4ade80;
+        }
+
+        /* TAREA PERDIDA: TEXTO EN ROJO */
+        .status-perdido { background-color: #ef4444; color: #ffffff; }
+        .task-card.lost {
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.08);
+        }
+        .task-card.lost .task-title {
+            color: #ef4444;
+            text-decoration: line-through;
+        }
+        .task-card.lost .task-timer-display {
+            color: #94a3b8;
+        }
+
+        /* INPUT DE EDICIÓN RÁPIDA */
+        .inline-edit-input {
+            background: #0f172a;
+            border: 1px solid #38bdf8;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            width: 100%;
+            outline: none;
+        }
+
+        @keyframes pulse-orange {
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6); }
+            70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+    </style>
+</head>
+<body>
+
+    <!-- ENCABEZADO -->
+    <header>
+        <div class="header-title-container">
+            <span class="day-name" id="display-day-name">LUNES</span>
+            <span class="full-date" id="display-full-date">19 de Octubre</span>
+        </div>
+        <div class="clock-container">
+            <div class="live-clock" id="live-clock">00:00:00</div>
+            <button class="btn-reset" onclick="resetAllTasks()">Reiniciar Día</button>
+        </div>
+    </header>
+
+    <!-- MATRIZ SIDE BY SIDE -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-hora">HORA</th>
+                    <th class="col-hacer">🚀 HACER</th>
+                    <th class="col-decidir">🌑 DECIDIR</th>
+                    <th class="col-delegar">⚡ DELEGAR</th>
+                    <th class="col-eliminar">🗑️ ELIMINAR</th>
+                </tr>
+            </thead>
+            <tbody id="matrix-body">
+                <!-- Se inyectan filas de 00:00 a 23:00 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const initialSeedData = {
+            "00:00": {
+                hacer: { title: "Nueva Voc. IN.", duration: 1800, status: "idle" },
+                eliminar: { title: "DORMIR", duration: 3600, status: "idle" }
+            },
+            "01:00": {
+                hacer: { title: "Preparar Productos y salir a vender", duration: 3600, status: "idle" },
+                decidir: { title: "NO HACER NADA", duration: 3600, status: "idle" }
+            },
+            "02:00": {
+                hacer: { title: "VENTAS", duration: 3600, status: "idle" },
+                delegar: { title: "Enviar menú a los clientes", duration: 1800, status: "idle" }
+            },
+            "03:00": { hacer: { title: "VENTAS", duration: 3600, status: "idle" } },
+            "04:00": { hacer: { title: "VENTAS", duration: 3600, status: "idle" } },
+            "05:00": { hacer: { title: "VENTAS", duration: 3600, status: "idle" } },
+            "06:00": { hacer: { title: "VENTAS", duration: 3600, status: "idle" } },
+            "07:00": {
+                hacer: { title: "VENTAS Y RETORNO", duration: 3600, status: "idle" },
+                decidir: { title: "DESAYUNAR", duration: 3600, status: "idle" }
+            },
+            "08:00": { hacer: { title: "DORMIR", duration: 3600, status: "idle" } },
+            "09:00": {
+                hacer: { title: "PREPARA PROSPECCIÓN", duration: 3600, status: "idle" },
+                eliminar: { title: "VER REDES SOCIALES", duration: 3600, status: "idle" }
+            },
+            "10:00": { hacer: { title: "PROSPECTAR", duration: 3600, status: "idle" } }
+        };
+
+        const columns = ['hacer', 'decidir', 'delegar', 'eliminar'];
+        let taskMatrix = JSON.parse(localStorage.getItem('matrix_sidebyside_data')) || initialSeedData;
+
+        function saveState() {
+            localStorage.setItem('matrix_sidebyside_data', JSON.stringify(taskMatrix));
+        }
+
+        function formatSeconds(secs) {
+            let m = Math.floor(secs / 60);
+            let s = Math.floor(secs % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function getSpanishDateStrings(now) {
+            const days = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            return {
+                dayName: days[now.getDay()],
+                fullDate: `${now.getDate()} de ${months[now.getMonth()]}`
+            };
+        }
+
+        function updateClockAndStates() {
+            const now = new Date();
+            const dateInfo = getSpanishDateStrings(now);
+            
+            document.getElementById('display-day-name').innerText = dateInfo.dayName;
+            document.getElementById('display-full-date').innerText = dateInfo.fullDate;
+            document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+
+            const currentHourNum = now.getHours();
+
+            // Evaluar las tareas de horas pasadas o tareas ejecutadas cuya hora ya expiró
+            for (let h = 0; h < 24; h++) {
+                const hourStr = h.toString().padStart(2, '0') + ":00";
+                const rowData = taskMatrix[hourStr];
+
+                if (!rowData) continue;
+
+                columns.forEach(col => {
+                    const task = rowData[col];
+                    if (!task) return;
+
+                    if (h < currentHourNum) {
+                        // Si estaba ejecutándose al cambiar de hora o no se completó -> pasa a HECHO si terminó o PERDIDO si no se tocó
+                        if (task.status === 'executing') {
+                            task.status = 'completed';
+                        } else if (task.status !== 'completed') {
+                            task.status = 'lost';
+                        }
+                    }
+                });
+            }
+
+            renderMatrixTable(currentHourNum, now);
+        }
+
+        function renderMatrixTable(currentHourNum, now) {
+            const tbody = document.getElementById('matrix-body');
+            tbody.innerHTML = '';
+
+            for (let h = 0; h < 24; h++) {
+                const hourStr = h.toString().padStart(2, '0') + ":00";
+                const tr = document.createElement('tr');
+
+                if (h === currentHourNum) {
+                    tr.className = 'active-live-hour';
+                }
+
+                // Celda de Hora
+                const tdHora = document.createElement('td');
+                tdHora.className = 'cell-hora';
+                tdHora.innerText = hourStr;
+                tr.appendChild(tdHora);
+
+                // Celdas de las Columnas
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    const task = taskMatrix[hourStr] ? taskMatrix[hourStr][col] : null;
+
+                    if (task) {
+                        const card = document.createElement('div');
+                        let cardClass = 'task-card';
+
+                        if (task.status === 'executing') cardClass += ' executing';
+                        else if (task.status === 'completed') cardClass += ' completed';
+                        else if (task.status === 'lost') cardClass += ' lost';
+
+                        card.className = cardClass;
+
+                        // Sección Izquierda (Título y Barra de Estado)
+                        const leftSection = document.createElement('div');
+                        leftSection.className = 'task-left-section';
+
+                        const title = document.createElement('span');
+                        title.className = 'task-title';
+                        title.innerText = task.title;
+
+                        // Edición con doble clic
+                        title.ondblclick = () => {
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = 'inline-edit-input';
+                            input.value = task.title;
+                            title.replaceWith(input);
+                            input.focus();
+
+                            const saveTitle = () => {
+                                if (input.value.trim() !== '') {
+                                    task.title = input.value.trim();
+                                    saveState();
+                                }
+                                updateClockAndStates();
+                            };
+                            input.onblur = saveTitle;
+                            input.onkeydown = (e) => { if (e.key === 'Enter') saveTitle(); };
+                        };
+
+                        leftSection.appendChild(title);
+
+                        // Si la tarea se está EJECUTANDO -> Se inserta la Barra de Carga (Imagen 03)
+                        if (task.status === 'executing') {
+                            const currentSecsThisHour = (now.getMinutes() * 60) + now.getSeconds();
+                            const remainingSecsInHour = Math.max(0, 3600 - currentSecsThisHour);
+                            
+                            // Cálculo del porcentaje del 0% al 100%
+                            const progressPercent = Math.min(100, Math.max(0, (currentSecsThisHour / 3600) * 100));
+
+                            // Auto-completar al llegar al 100% (0 segundos restantes)
+                            if (remainingSecsInHour <= 0) {
+                                task.status = 'completed';
+                                saveState();
+                            }
+
+                            const progressContainer = document.createElement('div');
+                            progressContainer.className = 'progress-bar-container';
+
+                            const progressFill = document.createElement('div');
+                            progressFill.className = 'progress-bar-fill';
+                            progressFill.style.width = `${progressPercent}%`;
+
+                            progressContainer.appendChild(progressFill);
+                            leftSection.appendChild(progressContainer);
+                        }
+
+                        // Sección Derecha (Timer + Botón)
+                        const rightSection = document.createElement('div');
+                        rightSection.className = 'task-right-section';
+
+                        const timerDisplay = document.createElement('div');
+                        timerDisplay.className = 'task-timer-display';
+
+                        if (task.status === 'executing') {
+                            const currentSecsThisHour = (now.getMinutes() * 60) + now.getSeconds();
+                            const remainingSecsInHour = Math.max(0, 3600 - currentSecsThisHour);
+                            timerDisplay.innerText = formatSeconds(remainingSecsInHour);
+                        } else {
+                            timerDisplay.innerText = formatSeconds(task.duration);
+                        }
+
+                        // Botón de Estado
+                        const btnBtn = document.createElement('button');
+                        btnBtn.className = 'btn-status';
+
+                        if (task.status === 'completed') {
+                            btnBtn.classList.add('status-hecho');
+                            btnBtn.innerText = '✓ HECHO';
+                        } else if (task.status === 'lost') {
+                            btnBtn.classList.add('status-perdido');
+                            btnBtn.innerText = 'PERDIDO';
+                        } else if (task.status === 'executing') {
+                            btnBtn.classList.add('status-ejecutando');
+                            btnBtn.innerText = 'EJECUTANDO';
+                            btnBtn.onclick = () => finishTask(hourStr, col);
+                        } else {
+                            if (h < currentHourNum) {
+                                btnBtn.classList.add('status-perdido');
+                                btnBtn.innerText = 'PERDIDO';
+                            } else {
+                                const isHacer = col === 'hacer';
+                                btnBtn.classList.add(isHacer ? 'status-comenzar' : 'status-elegir');
+                                btnBtn.innerText = isHacer ? 'COMENZAR' : 'ELEGIR';
+                                btnBtn.onclick = () => startTask(hourStr, col);
+                            }
+                        }
+
+                        rightSection.appendChild(timerDisplay);
+                        rightSection.appendChild(btnBtn);
+
+                        card.appendChild(leftSection);
+                        card.appendChild(rightSection);
+                        td.appendChild(card);
+                    } else {
+                        td.ondblclick = () => {
+                            const newTitle = prompt(`Añadir tarea a las ${hourStr} en ${col.toUpperCase()}:`);
+                            if (newTitle && newTitle.trim() !== '') {
+                                if (!taskMatrix[hourStr]) taskMatrix[hourStr] = {};
+                                taskMatrix[hourStr][col] = {
+                                    title: newTitle.trim(),
+                                    duration: 3600,
+                                    status: 'idle'
+                                };
+                                saveState();
+                                updateClockAndStates();
+                            }
+                        };
+                    }
+
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            }
+        }
+
+        function startTask(hourStr, chosenCol) {
+            const row = taskMatrix[hourStr];
+            if (!row || !row[chosenCol]) return;
+
+            row[chosenCol].status = 'executing';
+
+            // Descartar automáticamente las opciones paralelas de la misma hora
+            columns.forEach(col => {
+                if (col !== chosenCol && row[col]) {
+                    row[col].status = 'lost';
+                }
+            });
+
+            saveState();
+            updateClockAndStates();
+        }
+
+        function finishTask(hourStr, col) {
+            const row = taskMatrix[hourStr];
+            if (row && row[col]) {
+                row[col].status = 'completed';
+                saveState();
+                updateClockAndStates();
+            }
+        }
+
+        function resetAllTasks() {
+            if (confirm("¿Deseas reiniciar todas las tareas del día?")) {
+                taskMatrix = JSON.parse(JSON.stringify(initialSeedData));
+                saveState();
+                updateClockAndStates();
+            }
+        }
+
+        updateClockAndStates();
+        setInterval(updateClockAndStates, 1000);
+    </script>
+</body>
+</html>
